@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sandesh AI Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .navbar {
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: auto;
+            padding: 15px;
+        }
+
+        .card {
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.15);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+            color: white;
+        }
+
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            padding: 10px;
+            background: #38bdf8;
+            border: none;
+            color: white;
+            border-radius: 8px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        #chatbox {
+            height: 300px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .user { text-align: right; }
+        .bot { text-align: left; }
+
+        /* Intro */
+        #intro {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeOut 2s forwards;
+            animation-delay: 3s;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #38bdf8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            color: white;
+            margin: auto;
+        }
+
+        .spinner {
+            margin-top: 20px;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #fff;
+            border-top: 4px solid #38bdf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        .dark {
+            background: #121212;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- INTRO -->
+<div id="intro">
+    <div style="text-align:center;color:white;">
+        <div class="logo">S</div>
+        <h2>Sandesh AI Assistant</h2>
+        <div class="spinner"></div>
+    </div>
+</div>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    🤖 AI Study Assistant
+    <button onclick="toggleMode()">🌙</button>
+</div>
+
+<div class="container">
+
+    <!-- LOGIN -->
+    <div id="loginBox" class="card">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Enter your name">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <!-- APP -->
+    <div id="app" style="display:none;">
+
+        <!-- DASHBOARD -->
+        <div class="card">
+            <h3>📊 Dashboard</h3>
+            <p>Total Questions: <span id="count">0</span></p>
+        </div>
+
+        <!-- CHAT -->
+        <div class="card">
+            <h3>💬 Chat</h3>
+            <div id="chatbox"></div>
+
+            <input type="text" id="userInput" placeholder="Ask something...">
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="startVoice()">🎙️</button>
+        </div>
+
+        <!-- NOTES -->
+        <div class="card">
+            <h3>📚 Notes</h3>
+            <input type="text" id="topic" placeholder="Enter topic">
+            <button onclick="generateNotes()">Generate</button>
+            <p id="notes"></p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let API_KEY = "YOUR_API_KEY";
+let count = 0;
+
+// Login
+function login() {
+    let user = document.getElementById("username").value;
+    if (!user) return alert("Enter name");
+
+    localStorage.setItem("user", user);
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
+}
+
+// Auto login
+window.onload = () => {
+    if (localStorage.getItem("user")) {
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("app").style.display = "block";
+    }
+}
+
+// Dark mode
+function toggleMode() {
+    document.body.classList.toggle("dark");
+}
+
+// Notes
+function generateNotes() {
+    let topic = document.getElementById("topic").value;
+    document.getElementById("notes").innerText =
+        "Notes on " + topic + ": Key ideas, summary.";
+}
+
+// Voice input
+function startVoice() {
+    let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    rec.start();
+    rec.onresult = e => {
+        document.getElementById("userInput").value = e.results[0][0].transcript;
+    };
+}
+
+// Voice output
+function speak(text) {
+    let speech = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(speech);
+}
+
+// Fallback AI
+function fallback(msg) {
+    if (msg.includes("python")) return "Python is a programming language.";
+    if (msg.includes("ai")) return "AI means Artificial Intelligence.";
+    return "Basic response.";
+}
+
+// Chat
+async function sendMessage() {
+    let input = document.getElementById("userInput");
+    let msg = input.value.toLowerCase();
+    let chatbox = document.getElementById("chatbox");
+
+    chatbox.innerHTML += `<div class="user">You: ${msg}</div>`;
+    input.value = "";
+
+    count++;
+    document.getElementById("count").innerText = count;
+
+    let history = JSON.parse(localStorage.getItem("chat")) || [];
+    history.push(msg);
+    localStorage.setItem("chat", JSON.stringify(history));
+
+    if (API_KEY === "YOUR_API_KEY") {
+        let reply = fallback(msg);
+        chatbox.innerHTML += `<div class="bot">AI: ${reply}</div>`;
+        speak(reply);
+        return;
+    }
+
+    try {
+        let res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + API_KEY
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [{role: "user", content: msg}]
+            })
+        });
+
+        let data = await res.json();
+        let reply = data.choices[0].message.content;
+
+        chatbox.innerHTML += `<div class="bot">AI: ${reply}</div>`;
+        speak(reply);
+
+    } catch {
+        chatbox.innerHTML += `<div class="bot">Error connecting AI</div>`;
+    }
+}
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js');
+}
+</script>
+
+</body>
+</html>
