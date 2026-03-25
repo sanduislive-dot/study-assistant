@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Assistant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: white;
+    transition: 0.3s;
+}
+
+.light {
+    background: #f1f5f9;
+    color: black;
+}
+
+.navbar {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    background: #1e293b;
+}
+
+#chatbox {
+    height: 65vh;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.msg {
+    padding: 10px;
+    margin: 8px;
+    border-radius: 15px;
+    max-width: 70%;
+}
+
+.user {
+    background: #38bdf8;
+    color: black;
+    margin-left: auto;
+}
+
+.bot {
+    background: #1e293b;
+}
+
+.input-box {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    background: #1e293b;
+    padding: 10px;
+}
+
+input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+}
+
+button {
+    margin-left: 5px;
+    padding: 10px;
+    background: #38bdf8;
+    border: none;
+    border-radius: 8px;
+}
+
+.typing {
+    opacity: 0.7;
+    font-style: italic;
+}
+</style>
+</head>
+
+<body>
+
+<div class="navbar">
+    🤖 AI Assistant
+    <div>
+        <button onclick="toggleTheme()">🌙</button>
+        <button onclick="startVoice()">🎙️</button>
+    </div>
+</div>
+
+<div id="login" style="text-align:center;margin-top:50px;">
+    <h2>Welcome</h2>
+    <input id="name" placeholder="Enter name">
+    <br><br>
+    <button onclick="start()">Start</button>
+</div>
+
+<div id="app" style="display:none;">
+    <div id="chatbox"></div>
+
+    <div class="input-box">
+        <input id="input" placeholder="Type message...">
+        <button onclick="send()">Send</button>
+    </div>
+</div>
+
+<script>
+let API_KEY = "YOUR_API_KEY";
+
+// Start
+function start() {
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+
+    // Load history
+    let history = JSON.parse(localStorage.getItem("chat")) || [];
+    history.forEach(msg => addMessage(msg.text, msg.type));
+}
+
+// Theme
+function toggleTheme() {
+    document.body.classList.toggle("light");
+}
+
+// Add message
+function addMessage(text, type) {
+    let chat = document.getElementById("chatbox");
+    chat.innerHTML += `<div class="msg ${type}">${text}</div>`;
+    chat.scrollTop = chat.scrollHeight;
+}
+
+// Typing
+function showTyping() {
+    addMessage("AI is typing...", "bot typing");
+}
+function removeTyping() {
+    let t = document.querySelector(".typing");
+    if(t) t.remove();
+}
+
+// Voice input
+function startVoice() {
+    let rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    rec.start();
+    rec.onresult = e => {
+        document.getElementById("input").value = e.results[0][0].transcript;
+    };
+}
+
+// Voice output
+function speak(text) {
+    let speech = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(speech);
+}
+
+// Save chat
+function saveChat(text, type) {
+    let history = JSON.parse(localStorage.getItem("chat")) || [];
+    history.push({text, type});
+    localStorage.setItem("chat", JSON.stringify(history));
+}
+
+// Fallback
+function fallback(msg) {
+    if(msg.includes("hi")) return "Hello 👋";
+    if(msg.includes("python")) return "Python is a programming language.";
+    if(msg.includes("ai")) return "AI means Artificial Intelligence.";
+    return "I am learning...";
+}
+
+// Send
+async function send() {
+    let input = document.getElementById("input");
+    let msg = input.value.toLowerCase();
+
+    if(msg === "") return;
+
+    addMessage(msg, "user");
+    saveChat(msg, "user");
+
+    input.value = "";
+
+    showTyping();
+
+    // No API
+    if(API_KEY === "YOUR_API_KEY") {
+        setTimeout(() => {
+            removeTyping();
+            let reply = fallback(msg);
+            addMessage(reply, "bot");
+            saveChat(reply, "bot");
+            speak(reply);
+        }, 800);
+        return;
+    }
+
+    try {
+        let res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + API_KEY
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [{role:"user", content:msg}]
+            })
+        });
+
+        let data = await res.json();
+        let reply = data.choices[0].message.content;
+
+        removeTyping();
+        addMessage(reply, "bot");
+        saveChat(reply, "bot");
+        speak(reply);
+
+    } catch {
+        removeTyping();
+        addMessage("Error connecting AI", "bot");
+    }
+}
+
+// Service worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js');
+}
+</script>
+
+</body>
+</html>
